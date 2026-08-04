@@ -1,6 +1,6 @@
 import React from "react";
-import { styled } from "@mui/material/styles";
 import { useHistory } from "react-router";
+import { makeStyles, Theme } from "@material-ui/core/styles";
 import {
   ListItem,
   Typography,
@@ -9,50 +9,35 @@ import {
   ListItemAvatar,
   Paper,
   Badge,
-  Theme,
-} from "@mui/material";
-import { ThumbUpAltOutlined as LikeIcon, CommentRounded as CommentIcon } from "@mui/icons-material";
+  withStyles,
+} from "@material-ui/core";
+import LikeIcon from "@material-ui/icons/ThumbUpAltOutlined";
+import CommentIcon from "@material-ui/icons/CommentRounded";
 import { TransactionResponseItem } from "../models";
 import TransactionTitle from "./TransactionTitle";
 import TransactionAmount from "./TransactionAmount";
 
-const PREFIX = "TransactionItem";
-
-const classes = {
-  root: `${PREFIX}-root`,
-  paper: `${PREFIX}-paper`,
-  avatar: `${PREFIX}-avatar`,
-  socialStats: `${PREFIX}-socialStats`,
-  countIcons: `${PREFIX}-countIcons`,
-  countText: `${PREFIX}-countText`,
-};
-
-const StyledListItem = styled(ListItem)(({ theme }) => ({
-  [`& .${classes.root}`]: {
+const useStyles = makeStyles((theme: Theme) => ({
+  root: {
     flexGrow: 1,
   },
-
-  [`& .${classes.paper}`]: {
+  paper: {
     padding: theme.spacing(0),
     margin: "auto",
     width: "100%",
   },
-
-  [`& .${classes.avatar}`]: {
+  avatar: {
     width: theme.spacing(2),
   },
-
-  [`& .${classes.socialStats}`]: {
+  socialStats: {
     [theme.breakpoints.down("md")]: {
       marginTop: theme.spacing(2),
     },
   },
-
-  [`& .${classes.countIcons}`]: {
+  countIcons: {
     color: theme.palette.grey[400],
   },
-
-  [`& .${classes.countText}`]: {
+  countText: {
     color: theme.palette.grey[400],
     marginTop: 2,
     height: theme.spacing(2),
@@ -60,19 +45,20 @@ const StyledListItem = styled(ListItem)(({ theme }) => ({
   },
 }));
 
+const SmallAvatar = withStyles((theme: Theme) => ({
+  root: {
+    width: 22,
+    height: 22,
+    border: `2px solid ${theme.palette.background.paper}`,
+  },
+}))(Avatar);
+
 type TransactionProps = {
   transaction: TransactionResponseItem;
 };
 
-const SmallAvatar = styled(Avatar)(({ theme }: { theme: Theme }) => {
-  return {
-    width: 22,
-    height: 22,
-    border: `2px solid ${theme.palette.background.paper}`,
-  };
-});
-
 const TransactionItem: React.FC<TransactionProps> = ({ transaction }) => {
+  const classes = useStyles();
   const history = useHistory();
 
   const showTransactionDetail = (transactionId: string) => {
@@ -80,7 +66,7 @@ const TransactionItem: React.FC<TransactionProps> = ({ transaction }) => {
   };
 
   return (
-    <StyledListItem
+    <ListItem
       data-test={`transaction-item-${transaction.id}`}
       alignItems="flex-start"
       onClick={() => showTransactionDetail(transaction.id)}
@@ -118,7 +104,7 @@ const TransactionItem: React.FC<TransactionProps> = ({ transaction }) => {
                 <Grid
                   container
                   direction="row"
-                  justifyContent="flex-start"
+                  justify="flex-start"
                   alignItems="flex-start"
                   spacing={1}
                   className={classes.socialStats}
@@ -127,7 +113,10 @@ const TransactionItem: React.FC<TransactionProps> = ({ transaction }) => {
                     <LikeIcon className={classes.countIcons} />
                   </Grid>
                   <Grid item>
-                    <Typography data-test="transaction-like-count" className={classes.countText}>
+                    <Typography
+                      data-test="transaction-like-count"
+                      className={classes.countText}
+                    >
                       {transaction.likes.length}
                     </Typography>
                   </Grid>
@@ -135,7 +124,10 @@ const TransactionItem: React.FC<TransactionProps> = ({ transaction }) => {
                     <CommentIcon className={classes.countIcons} />
                   </Grid>
                   <Grid item>
-                    <Typography data-test="transaction-comment-count" className={classes.countText}>
+                    <Typography
+                      data-test="transaction-comment-count"
+                      className={classes.countText}
+                    >
                       {transaction.comments.length}
                     </Typography>
                   </Grid>
@@ -148,7 +140,7 @@ const TransactionItem: React.FC<TransactionProps> = ({ transaction }) => {
           </Grid>
         </Grid>
       </Paper>
-    </StyledListItem>
+    </ListItem>
   );
 };
 
