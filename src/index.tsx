@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { Router } from "react-router-dom";
 import { createTheme, ThemeProvider } from "@material-ui/core/styles";
-import { VoiceAssistantInit } from "./components/VoiceAssistantInit";
 import App from "./containers/App";
 import { history } from "./utils/historyUtils";
 
@@ -38,7 +37,6 @@ const theme = createTheme({
 ReactDOM.render(
   <Router history={history}>
     <ThemeProvider theme={theme}>
-      <VoiceAssistantInit />
       <App />
     </ThemeProvider>
   </Router>,

@@ -74,17 +74,6 @@
       "balance": 49474,
       "createdAt": "2023-12-07T04:39:38.383Z",
       "modifiedAt": "2024-03-07T00:07:36.510Z"
-    },
-    {
-      "id": "B_CyDBu7O",
-      "uuid": "0dafb25f-9644-4809-8ff4-ba911fd42500",
-      "firstName": "123",
-      "lastName": "123",
-      "username": "123",
-      "password": "$2a$10$WqUd2NfFST3L5559KCZq5OsjqxrEzAv9Gexf6WAAsBjf7gENbhg8.",
-      "balance": 0,
-      "createdAt": "2026-08-03T20:34:09.007Z",
-      "modifiedAt": "2026-08-03T20:34:09.007Z"
     }
   ],
   "contacts": [
@@ -264,28 +253,6 @@
       "isDeleted": false,
       "createdAt": "2024-01-26T14:01:01.815Z",
       "modifiedAt": "2024-03-07T08:44:31.174Z"
-    },
-    {
-      "id": "OnkhlM1rk",
-      "uuid": "5c3b2f5a-fe3b-4bf9-b611-02e9865abeb4",
-      "userId": "B_CyDBu7O",
-      "bankName": "12345",
-      "accountNumber": "111111111",
-      "routingNumber": "123456789",
-      "isDeleted": false,
-      "createdAt": "2026-08-03T20:34:43.040Z",
-      "modifiedAt": "2026-08-03T20:34:43.040Z"
-    },
-    {
-      "id": "kmycZ0kYJ",
-      "uuid": "faaf20d1-6ea3-4500-a235-1db71cf0233d",
-      "userId": "B_CyDBu7O",
-      "bankName": "12345",
-      "accountNumber": "111111111",
-      "routingNumber": "111111111",
-      "isDeleted": false,
-      "createdAt": "2026-08-03T20:35:01.349Z",
-      "modifiedAt": "2026-08-03T20:35:01.349Z"
     }
   ],
   "transactions": [
@@ -11019,3 +10986,4 @@
     }
   ]
 }
+

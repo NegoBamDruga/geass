@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Paper, Typography, Box, Chip } from "@material-ui/core";
+import { Paper, Typography, Box, Chip, IconButton } from "@material-ui/core";
 import RecordVoiceOverIcon from "@material-ui/icons/RecordVoiceOver";
 
 export const VoiceAssistantInit: React.FC = () => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const expandTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [mensagemStatus, setMensagemStatus] = useState<string>("Iniciando assistente...");
   const [ativo, setAtivo] = useState<boolean>(false);
+  const [expandido, setExpandido] = useState<boolean>(true); // true no início (feedback de conexão)
 
   const simularTecla = (tecla: "ArrowUp" | "ArrowDown" | "PageDown" | "PageUp") => {
     const elementoAlvo = document.activeElement || window;
@@ -39,6 +41,17 @@ export const VoiceAssistantInit: React.FC = () => {
     elementoAlvo.dispatchEvent(eventoKeyUp);
   };
 
+  // Expande temporariamente o card e agenda o recolhimento automático
+  const expandirTemporariamente = (duracaoMs = 3000) => {
+    setExpandido(true);
+    if (expandTimeoutRef.current) {
+      clearTimeout(expandTimeoutRef.current);
+    }
+    expandTimeoutRef.current = setTimeout(() => {
+      setExpandido(false);
+    }, duracaoMs);
+  };
+
   useEffect(() => {
     let cancelado = false;
 
@@ -57,6 +70,7 @@ export const VoiceAssistantInit: React.FC = () => {
 
         setAtivo(true);
         setMensagemStatus("Comando por voz ativo! Tente dizer: 'Descer página'");
+        expandirTemporariamente(4000); // mostra o card completo por 4s ao conectar, depois minimiza
 
         intervalRef.current = setInterval(async () => {
           try {
@@ -69,6 +83,7 @@ export const VoiceAssistantInit: React.FC = () => {
 
                 // Exibe brevemente na tela o comando detectado
                 setMensagemStatus(`Comando detectado: ${comando.acao}`);
+                expandirTemporariamente(3000); // expande ao detectar comando, some depois de 3s
 
                 if (comando.acao === "DESCER_PAGINA") {
                   simularTecla("PageDown");
@@ -96,6 +111,7 @@ export const VoiceAssistantInit: React.FC = () => {
         console.error("Erro ao conectar com a API Python:", erro);
         setAtivo(false);
         setMensagemStatus("Assistente offline (verifique o servidor Python)");
+        expandirTemporariamente(4000); // mostra o erro por 4s, depois minimiza
       }
     };
 
@@ -106,19 +122,38 @@ export const VoiceAssistantInit: React.FC = () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      if (expandTimeoutRef.current) {
+        clearTimeout(expandTimeoutRef.current);
+      }
       fetch("http://localhost:8000/ouvinte/parar", { method: "POST" }).catch(() => {});
     };
   }, []);
 
+  // ---- Estado minimizado: só o ícone, clicável para reabrir ----
+  if (!expandido) {
+    return (
+      <IconButton
+        onClick={() => expandirTemporariamente(4000)}
+        style={{
+          backgroundColor: ativo ? "#1976d2" : "#757575",
+          color: "#fff",
+          width: 44,
+          height: 44,
+          boxShadow: "0px 2px 8px rgba(0,0,0,0.25)",
+          transition: "background-color 0.3s ease",
+        }}
+        aria-label="Assistente de voz"
+      >
+        <RecordVoiceOverIcon fontSize="small" />
+      </IconButton>
+    );
+  }
+
+  // ---- Estado expandido: card completo ----
   return (
     <Paper
       elevation={6}
       style={{
-        position: "fixed",
-        top: "50%", // Centraliza verticalmente
-        right: 20,
-        transform: "translateY(-50%)", // Garante a centralização perfeita do próprio elemento
-        zIndex: 9999,
         padding: "12px 16px",
         display: "flex",
         alignItems: "center",
@@ -127,6 +162,7 @@ export const VoiceAssistantInit: React.FC = () => {
         borderRadius: "8px",
         maxWidth: "280px",
         boxShadow: "0px 4px 12px rgba(0,0,0,0.2)",
+        transition: "opacity 0.3s ease",
       }}
     >
       <RecordVoiceOverIcon style={{ marginRight: 12, fontSize: 28, color: "#fff" }} />
@@ -150,6 +186,14 @@ export const VoiceAssistantInit: React.FC = () => {
           {mensagemStatus}
         </Typography>
       </Box>
+      <IconButton
+        size="small"
+        onClick={() => setExpandido(false)}
+        style={{ color: "#fff", marginLeft: 4 }}
+        aria-label="Minimizar"
+      >
+        <span style={{ fontSize: 16, lineHeight: 1 }}>×</span>
+      </IconButton>
     </Paper>
   );
 };
