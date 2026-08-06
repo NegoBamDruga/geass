@@ -42,7 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODELO_OLLAMA = 'qwen2.5:0.5b'
+MODELO_OLLAMA = 'deepseek-r1:7b'
 LIMIAR_CONFIANCA = 0.6
 # Limiar um pouco mais permissivo para o apoio de IA dentro do modo
 # soletrar, já que ali o espaço de respostas possíveis é bem menor
@@ -58,6 +58,20 @@ ACOES_VALIDAS = {
     "ROLAR_BAIXO",
     "ROLAR_CIMA",
     "ALTERNAR_CAPSLOCK",
+    "SUBMETER_FORMULARIO",
+    "LOGOUT",
+    "FOCAR_PROXIMO",
+    "PRESSIONAR_ENTER",
+    "CLICAR_FOCADO",
+    "FOCAR_ANTERIOR",
+    "DIGITAR_FOCADO",
+    "ANEXAR_FOCADO",
+    "LIMPAR_FOCADO",
+    "APAGAR_ULTIMO",
+    "ALTERNAR_FOCADO",
+    "SELECIONAR_OPCAO",
+    "VOLTAR",
+    "FECHAR",
     "DESCONHECIDO",
     "NENHUM",
 }
@@ -114,6 +128,12 @@ ALIASES_CAMPO = {
     "nota": "note",
     "coment[áa]rio": "note",
     "busca": "search",
+    "nome do banco": "bankName",
+    "banco": "bankName",
+    "n[úu]mero de roteamento": "routingNumber",
+    "roteamento": "routingNumber",
+    "n[úu]mero da conta": "accountNumber",
+    "conta banc[áa]ria": "accountNumber",
 }
 
 # Formas faladas conhecidas por campo (sem acento, minúsculo). Usadas nas
@@ -132,6 +152,13 @@ FORMAS_CAMPO = {
     "amount": ["valor", "quantia", "montante"],
     "note": ["nota", "comentario", "observacao"],
     "search": ["busca", "pesquisa", "procurar"],
+    "bankName": ["nome do banco", "banco", "bank name"],
+    "routingNumber": [
+        "numero de roteamento", "roteamento", "routing number", "routing"
+    ],
+    "accountNumber": [
+        "numero da conta", "conta bancaria", "account number"
+    ],
 }
 
 # Lista achatada (forma_sem_acento -> campo) usada na camada de fuzzy match.
@@ -149,6 +176,9 @@ _FORMAS_ACHATADAS = {
 # transcrição no final da palavra (ex: "confirmasao" ainda casa com
 # "confirma\w*").
 CAMPO_REGRAS = [
+    (re.compile(r"numero\s*(?:de|do)?\s*roteamento|routing"), "routingNumber"),
+    (re.compile(r"numero\s*(?:da|de)?\s*conta|account\s*number"), "accountNumber"),
+    (re.compile(r"nome\s*(?:do|de)?\s*banco|bank\s*name|\bbanco\b"), "bankName"),
     (re.compile(r"confirm\w*.*senha|senha.*confirm\w*|repetir\s*senha"), "confirmPassword"),
     (re.compile(r"sobre\s*nome|ultimo\s*nome|last\s*name"), "lastName"),
     (re.compile(r"usuari\w*|nome\s*de\s*usuari\w*|login|user\s*name"), "username"),
@@ -482,6 +512,20 @@ def processar_letra_soletrar(texto: str) -> dict:
 ROTAS_CONHECIDAS = [
     (
         re.compile(
+            r"^(?:"
+            r"criar(?:\s+uma)?\s+conta|"
+            r"abrir(?:\s+uma)?\s+conta|"
+            r"fazer(?:\s+o)?\s+cadastro|"
+            r"cadastrar(?:-?se)?|"
+            r"cadastre(?:-?se)?"
+            r")$",
+            re.I,
+        ),
+        "/signup",
+        "Abrindo criação de conta",
+    ),
+    (
+        re.compile(
             r"\b(in[íi]cio|home|p[áa]gina inicial)\b",
             re.I,
         ),
@@ -535,6 +579,37 @@ def tentar_match_navegacao(texto: str):
     for padrao, rota, falar in ROTAS_CONHECIDAS:
         if padrao.search(texto):
             return _resultado("NAVEGAR", rota=rota, falar=falar)
+    return None
+
+
+PADRAO_LOGOUT = re.compile(
+    r"\b(?:fazer\s+)?(?:logout|logoff)|\b(?:sair|deslogar|encerrar)\s+(?:da\s+)?(?:conta|sess[ãa]o)\b",
+    re.I,
+)
+PADRAO_LOGIN = re.compile(
+    r"^(?:"
+    r"logar|"
+    r"fazer\s+login|"
+    r"entrar|"
+    r"entrar\s+na\s+conta|"
+    r"iniciar\s+sess[ãa]o"
+    r")$",
+    re.I,
+)
+PADRAO_SUBMETER = re.compile(
+    r"^(?:salvar|salve|confirmar|confirme|enviar|envie|finalizar|finalize|submeter)(?:\s+(?:o\s+)?formul[áa]rio)?$",
+    re.I,
+)
+
+
+def tentar_match_fluxo_interface(texto: str):
+    texto = texto.strip()
+    if PADRAO_LOGOUT.search(texto):
+        return _resultado("LOGOUT", falar="Saindo da conta")
+    if PADRAO_LOGIN.fullmatch(texto):
+        return _resultado("SUBMETER_FORMULARIO", falar="Entrando")
+    if PADRAO_SUBMETER.fullmatch(texto):
+        return _resultado("SUBMETER_FORMULARIO", falar="Enviando formulário")
     return None
 
 
@@ -645,10 +720,110 @@ def tentar_match_capslock(texto: str):
     return None
 
 
+PADRAO_PROXIMO = re.compile(
+    r"^(?:pr[oó]ximo|pr[oó]xima|apertar\s+tab|pressionar\s+tab|tecla\s+tab|tab)$",
+    re.I,
+)
+PADRAO_ENTER = re.compile(
+    r"^(?:enter|apertar\s+enter|pressionar\s+enter|tecla\s+enter)$",
+    re.I,
+)
+PADRAO_CLICAR_FOCADO = re.compile(
+    r"^(?:clicar|clique|dar\s+um\s+clique|clicar\s+aqui)$",
+    re.I,
+)
+
+
+def tentar_match_teclas_interface(texto: str):
+    """Comandos curtos para navegar e ativar o elemento em foco."""
+    texto = texto.strip()
+    if PADRAO_PROXIMO.fullmatch(texto):
+        return _resultado("FOCAR_PROXIMO", falar="Próximo")
+    if PADRAO_ENTER.fullmatch(texto):
+        return _resultado("PRESSIONAR_ENTER", falar="Enter")
+    if PADRAO_CLICAR_FOCADO.fullmatch(texto):
+        return _resultado("CLICAR_FOCADO", falar="Clicando")
+    return None
+
+
+PADRAO_ANTERIOR = re.compile(
+    r"^(?:anterior|voltar\s+foco|shift\s+tab|apertar\s+shift\s+tab)$",
+    re.I,
+)
+PADRAO_DIGITAR_FOCADO = re.compile(
+    r"^(?:digitar|escrever|ditar)\s+"
+    r"(?!.*\s+n[ao]\s+(?:campo\s+)?.+$)"
+    r"(?!.*\s+(?:com|para)\s+.+$)"
+    r"(?P<valor>.+)$",
+    re.I,
+)
+PADRAO_ANEXAR_FOCADO = re.compile(
+    r"^(?:adicionar|acrescentar|continuar\s+digitando)\s+(?P<valor>.+)$",
+    re.I,
+)
+PADRAO_LIMPAR_FOCADO = re.compile(
+    r"^(?:limpar|apagar|esvaziar)(?:\s+(?:campo|isso|aqui))?$",
+    re.I,
+)
+PADRAO_APAGAR_ULTIMO = re.compile(
+    r"^(?:apagar|delete|remover)\s+(?:o\s+)?(?:[úu]ltimo|[úu]ltima)(?:\s+caractere|\s+letra)?$",
+    re.I,
+)
+PADRAO_ALTERNAR_FOCADO = re.compile(
+    r"^(?:marcar|desmarcar|alternar)(?:\s+(?:op[çc][ãa]o|caixa|checkbox|isso))?$",
+    re.I,
+)
+PADRAO_SELECIONAR_OPCAO = re.compile(
+    r"^(?:selecionar|escolher)\s+(?P<valor>.+)$",
+    re.I,
+)
+PADRAO_VOLTAR_TELA = re.compile(
+    r"^(?:voltar|voltar\s+tela|p[áa]gina\s+anterior)$",
+    re.I,
+)
+PADRAO_FECHAR = re.compile(
+    r"^(?:fechar|cancelar|escape|apertar\s+escape)$",
+    re.I,
+)
+
+
+def tentar_match_controle_generico(texto: str):
+    """Comandos aplicados ao elemento atualmente focado no navegador."""
+    texto = texto.strip()
+    if PADRAO_ANTERIOR.fullmatch(texto):
+        return _resultado("FOCAR_ANTERIOR", falar="Anterior")
+    if PADRAO_APAGAR_ULTIMO.fullmatch(texto):
+        return _resultado("APAGAR_ULTIMO", falar="Apagando")
+    if PADRAO_LIMPAR_FOCADO.fullmatch(texto):
+        return _resultado("LIMPAR_FOCADO", falar="Campo limpo")
+    if PADRAO_ALTERNAR_FOCADO.fullmatch(texto):
+        return _resultado("ALTERNAR_FOCADO", falar="Alternando opção")
+    if PADRAO_VOLTAR_TELA.fullmatch(texto):
+        return _resultado("VOLTAR", falar="Voltando")
+    if PADRAO_FECHAR.fullmatch(texto):
+        return _resultado("FECHAR", falar="Fechando")
+
+    m = PADRAO_ANEXAR_FOCADO.fullmatch(texto)
+    if m:
+        return _resultado("ANEXAR_FOCADO", valor=m.group("valor").strip(), falar="Adicionando texto")
+
+    m = PADRAO_DIGITAR_FOCADO.fullmatch(texto)
+    if m:
+        return _resultado("DIGITAR_FOCADO", valor=m.group("valor").strip(), falar="Digitando")
+
+    m = PADRAO_SELECIONAR_OPCAO.fullmatch(texto)
+    if m:
+        return _resultado("SELECIONAR_OPCAO", valor=m.group("valor").strip(), falar="Selecionando opção")
+    return None
+
+
 MATCHERS_LOCAIS = [
+    tentar_match_fluxo_interface,
     tentar_match_navegacao,
     tentar_match_rolagem,
+    tentar_match_teclas_interface,
     tentar_match_clicar,
+    tentar_match_controle_generico,
     tentar_match_limpar,
     tentar_match_preencher,
     tentar_match_capslock,
@@ -690,7 +865,12 @@ Responda APENAS um objeto JSON, sem texto antes ou depois:
 }
 
 Ações possíveis: NAVEGAR, CLICAR_TEXTO, PREENCHER_CAMPO, LIMPAR_CAMPO, ROLAR_BAIXO,
-ROLAR_CIMA, ALTERNAR_CAPSLOCK, DESCONHECIDO. Use LIMPAR_CAMPO quando o usuário
+ROLAR_CIMA, ALTERNAR_CAPSLOCK, SUBMETER_FORMULARIO, LOGOUT, FOCAR_PROXIMO,
+PRESSIONAR_ENTER, CLICAR_FOCADO, FOCAR_ANTERIOR, DIGITAR_FOCADO,
+ANEXAR_FOCADO, LIMPAR_FOCADO, APAGAR_ULTIMO, ALTERNAR_FOCADO,
+SELECIONAR_OPCAO, VOLTAR, FECHAR, DESCONHECIDO.
+Use SUBMETER_FORMULARIO para entrar, salvar, confirmar ou enviar o formulário
+visível. Use LOGOUT quando o usuário quiser sair da conta. Use LIMPAR_CAMPO quando o usuário
 quiser apagar/limpar/esvaziar o conteúdo de um campo (por nome ou por
 posição, ex: "apaga o segundo campo").
 
@@ -944,23 +1124,83 @@ def processar_comando(texto: str) -> dict:
 # Voz (TTS) e execução
 # ============================================================================
 
+# Impede que o microfone reconheça a voz produzida pelo próprio pyttsx3.
+tts_em_execucao = threading.Event()
+tts_estado_lock = threading.Lock()
+tts_engine_lock = threading.Lock()
+falas_tts_pendentes = 0
+ultima_fala_assistente = {"texto": "", "terminou_em": 0.0}
+MARGEM_APOS_FALA_SEGUNDOS = 0.8
+JANELA_FILTRO_ECO_SEGUNDOS = 2.5
+
+
+def _texto_normalizado_para_eco(texto: str) -> str:
+    return re.sub(r"\s+", " ", _sem_acentos(texto.lower())).strip()
+
+
+def _parece_eco_da_ultima_fala(texto: str) -> bool:
+    """Descarta uma transcrição muito parecida com a última fala do bot."""
+    agora = time.monotonic()
+    with tts_estado_lock:
+        ultima = ultima_fala_assistente["texto"]
+        terminou_em = ultima_fala_assistente["terminou_em"]
+
+    if not ultima or agora - terminou_em > JANELA_FILTRO_ECO_SEGUNDOS:
+        return False
+
+    recebido = _texto_normalizado_para_eco(texto)
+    falado = _texto_normalizado_para_eco(ultima)
+    if not recebido or not falado:
+        return False
+
+    similaridade = difflib.SequenceMatcher(None, recebido, falado).ratio()
+    return recebido in falado or falado in recebido or similaridade >= 0.72
+
 def falar(texto):
+    global falas_tts_pendentes
     if not texto:
         return
+
+    texto = str(texto).strip()
     print(f"🤖 Assistente: {texto}")
+
+    # O evento é ativado antes da thread começar, eliminando a janela em
+    # que o laço poderia abrir o microfone enquanto a fala está iniciando.
+    with tts_estado_lock:
+        falas_tts_pendentes += 1
+        ultima_fala_assistente["texto"] = texto
+        tts_em_execucao.set()
+
     def _falar():
+        global falas_tts_pendentes
         try:
-            engine = pyttsx3.init()
-            voices = engine.getProperty('voices')
-            for voice in voices:
-                if "brazil" in voice.name.lower() or "portuguese" in voice.name.lower():
-                    engine.setProperty('voice', voice.id)
-                    break
-            engine.setProperty('rate', 180)
-            engine.say(texto)
-            engine.runAndWait()
+            # Serializa falas simultâneas: dois engines falando ao mesmo
+            # tempo também poderiam causar eco e erros no pyttsx3.
+            with tts_engine_lock:
+                engine = pyttsx3.init()
+                voices = engine.getProperty('voices')
+                for voice in voices:
+                    if "brazil" in voice.name.lower() or "portuguese" in voice.name.lower():
+                        engine.setProperty('voice', voice.id)
+                        break
+                engine.setProperty('rate', 180)
+                engine.say(texto)
+                engine.runAndWait()
+                try:
+                    engine.stop()
+                except Exception:
+                    pass
         except Exception as e:
             print(f"Erro na síntese de voz: {e}")
+        finally:
+            # Dá tempo para o som terminar fisicamente nos alto-falantes.
+            time.sleep(MARGEM_APOS_FALA_SEGUNDOS)
+            with tts_estado_lock:
+                falas_tts_pendentes = max(0, falas_tts_pendentes - 1)
+                ultima_fala_assistente["terminou_em"] = time.monotonic()
+                if falas_tts_pendentes == 0:
+                    tts_em_execucao.clear()
+
     threading.Thread(target=_falar, daemon=True).start()
 
 
@@ -982,14 +1222,30 @@ def loop_escuta_continua():
 
     while ouvinte_ativo:
         try:
+            # Enquanto o TTS fala (e durante a pequena margem posterior),
+            # o microfone não é aberto.
+            if tts_em_execucao.is_set():
+                time.sleep(0.1)
+                continue
+
             with sr.Microphone() as source:
                 recognizer.adjust_for_ambient_noise(source, duration=0.3)
                 print("[Aguardando fala...]")
                 audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
 
+            # Uma fala iniciada por outro endpoint enquanto o listen estava
+            # aberto invalida esse áudio; descartamos antes da transcrição.
+            if tts_em_execucao.is_set():
+                print("🔇 Áudio descartado porque o assistente estava falando.")
+                continue
+
             print("⚙️ Processando áudio...")
             texto = recognizer.recognize_google(audio, language="pt-BR").lower()
             print(f"🗣️ Você disse: '{texto}'")
+
+            if _parece_eco_da_ultima_fala(texto):
+                print(f"🔇 Eco ignorado: '{texto}'")
+                continue
 
             if len(texto.strip()) >= 1:  # no modo soletrar, até 1 letra deve valer
                 decisao = processar_comando(texto)
