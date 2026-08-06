@@ -480,12 +480,55 @@ def processar_letra_soletrar(texto: str) -> dict:
 # ============================================================================
 
 ROTAS_CONHECIDAS = [
-    (re.compile(r"\b(in[íi]cio|home|p[áa]gina inicial)\b", re.I), "/", "Indo para o início"),
-    (re.compile(r"\b(perfil|configura[çc][õo]es|settings)\b", re.I), "/user/settings", "Abrindo configurações"),
-    (re.compile(r"\bnotifica[çc][õo]es\b", re.I), "/notifications", "Abrindo notificações"),
-    (re.compile(r"\b(minha conta|transa[çc][õo]es)\b", re.I), "/personal", "Abrindo minha conta"),
-    (re.compile(r"\bnova transa[çc][ãa]o\b", re.I), "/transaction/new", "Abrindo nova transação"),
-    (re.compile(r"\bcontas banc[áa]rias\b", re.I), "/bankaccounts", "Abrindo contas bancárias"),
+    (
+        re.compile(
+            r"\b(in[íi]cio|home|p[áa]gina inicial)\b",
+            re.I,
+        ),
+        "/",
+        "Indo para o início",
+    ),
+    (
+        re.compile(
+            r"\b(perfil|configura[çc][õo]es|settings)\b",
+            re.I,
+        ),
+        "/user/settings",
+        "Abrindo configurações",
+    ),
+    (
+        re.compile(
+            r"\bnotifica[çc][õo]es\b",
+            re.I,
+        ),
+        "/notifications",
+        "Abrindo notificações",
+    ),
+    (
+        re.compile(
+            r"\b(minha conta|transa[çc][õo]es)\b",
+            re.I,
+        ),
+        "/personal",
+        "Abrindo minha conta",
+    ),
+    (
+        re.compile(
+            r"\b(?:criar|fazer|realizar|iniciar|nova|abrir)"
+            r"(?:\s+uma)?\s+transa[çc][ãa]o\b",
+            re.I,
+        ),
+        "/transaction/new",
+        "Abrindo criação de transação",
+    ),
+    (
+        re.compile(
+            r"\bcontas banc[áa]rias\b",
+            re.I,
+        ),
+        "/bankaccounts",
+        "Abrindo contas bancárias",
+    ),
 ]
 
 def tentar_match_navegacao(texto: str):
